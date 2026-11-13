@@ -1,0 +1,10 @@
+{
+  "name": "vndach-site",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "directory": "./dist",
+    // Remplace le fichier _redirects : toute adresse inconnue renvoie
+    // index.html, et c'est React qui décide quoi afficher.
+    "not_found_handling": "single-page-application"
+  }
+}
