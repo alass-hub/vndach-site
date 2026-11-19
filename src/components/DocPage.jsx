@@ -61,7 +61,7 @@ export default function DocPage({ doc }) {
               </p>
               <p>
                 Une question sur ce texte ?{' '}
-                <Link to="/contact">Nous contacter</Link>.
+                <Link to="/contact/">Nous contacter</Link>.
               </p>
             </footer>
           </article>
