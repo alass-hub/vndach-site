@@ -6,7 +6,7 @@
  "scripts": {
   "build": "vite build",
   "build:ssr": "vite build --ssr src/entry-server.jsx --outDir .ssr",
-  "prerender": "node scripts/prerender-ssg.mjs",
+  "prerender": "node scripts/prerender.mjs",
   "deploy:build": "npm run build && npm run build:ssr && npm run prerender"
 },
   "dependencies": {
