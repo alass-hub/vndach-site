@@ -3,11 +3,12 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build && node scripts/prerender.mjs",
-    "preview": "vite preview"
-  },
+ "scripts": {
+  "build": "vite build",
+  "build:ssr": "vite build --ssr src/entry-server.jsx --outDir .ssr",
+  "prerender": "node scripts/prerender-ssg.mjs",
+  "deploy:build": "npm run build && npm run build:ssr && npm run prerender"
+},
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
