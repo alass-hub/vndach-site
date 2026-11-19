@@ -4,12 +4,12 @@ import logo from './vendach-logo.png';
 
 const NAV = [
   { to: '/', label: 'Accueil', end: true },
-  { to: '/a-propos', label: 'À propos' },
-  { to: '/guides', label: 'Guides' },
-  { to: '/cgu', label: 'Conditions' },
-  { to: '/confidentialite', label: 'Confidentialité' },
-  { to: '/regles-communaute', label: 'Règles' },
-  { to: '/contact', label: 'Contact' },
+  { to: '/a-propos/', label: 'À propos' },
+  { to: '/guides/', label: 'Guides' },
+  { to: '/cgu/', label: 'Conditions' },
+  { to: '/confidentialite/', label: 'Confidentialité' },
+  { to: '/regles-communaute/', label: 'Règles' },
+  { to: '/contact/', label: 'Contact' },
 ];
 
 export default function Layout() {
@@ -71,32 +71,32 @@ export default function Layout() {
             <div>
               <h4>Textes de référence</h4>
               <ul>
-                <li><Link to="/cgu">Conditions générales</Link></li>
-                <li><Link to="/confidentialite">Politique de confidentialité</Link></li>
-                <li><Link to="/bons-achat">Règlement des bons d'achat</Link></li>
-                <li><Link to="/regles-communaute">Règles de la communauté</Link></li>
+                <li><Link to="/cgu/">Conditions générales</Link></li>
+                <li><Link to="/confidentialite/">Politique de confidentialité</Link></li>
+                <li><Link to="/bons-achat/">Règlement des bons d'achat</Link></li>
+                <li><Link to="/regles-communaute/">Règles de la communauté</Link></li>
               </ul>
             </div>
 
             <div>
               <h4>Guides</h4>
               <ul>
-                <li><Link to="/guides/acheter">Acheter en sécurité</Link></li>
-                <li><Link to="/guides/vendre">Vendre sur la MarketPlace</Link></li>
-                <li><Link to="/guides/confidentialite">Régler sa confidentialité</Link></li>
-                <li><Link to="/guides/donnees-mobiles">Économiser ses données</Link></li>
-                <li><Link to="/guides/signaler">Signaler un problème</Link></li>
+                <li><Link to="/guides/acheter/">Acheter en sécurité</Link></li>
+                <li><Link to="/guides/vendre/">Vendre sur la MarketPlace</Link></li>
+                <li><Link to="/guides/confidentialite/">Régler sa confidentialité</Link></li>
+                <li><Link to="/guides/donnees-mobiles/">Économiser ses données</Link></li>
+                <li><Link to="/guides/signaler/">Signaler un problème</Link></li>
               </ul>
             </div>
 
             <div>
               <h4>Institution</h4>
               <ul>
-                <li><Link to="/a-propos">À propos</Link></li>
-                <li><Link to="/autorites">Pour les autorités</Link></li>
-                <li><Link to="/partenaires">Partenaires et presse</Link></li>
-                <li><Link to="/mentions-legales">Mentions légales</Link></li>
-                <li><Link to="/contact">Nous contacter</Link></li>
+                <li><Link to="/a-propos/">À propos</Link></li>
+                <li><Link to="/autorites/">Pour les autorités</Link></li>
+                <li><Link to="/partenaires/">Partenaires et presse</Link></li>
+                <li><Link to="/mentions-legales/">Mentions légales</Link></li>
+                <li><Link to="/contact/">Nous contacter</Link></li>
               </ul>
             </div>
           </div>
