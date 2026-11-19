@@ -5,7 +5,7 @@
    ========================================================================== */
 
 export const guideAcheteur = {
-  slug: 'guides/acheter',
+  slug: 'guides/acheter/',
   title: 'Acheter en sécurité',
   category: 'Guides',
   updated: '9 octobre 2026',
@@ -75,7 +75,7 @@ export const guideAcheteur = {
 };
 
 export const guideVendeur = {
-  slug: 'guides/vendre',
+  slug: 'guides/vendre/',
   title: 'Vendre sur la MarketPlace',
   category: 'Guides',
   updated: '9 octobre 2026',
@@ -171,7 +171,7 @@ export const guideVendeur = {
 };
 
 export const guideCreateur = {
-  slug: 'guides/creer',
+  slug: 'guides/creer/',
   title: 'Publier et être récompensé',
   category: 'Guides',
   updated: '9 octobre 2026',
@@ -223,7 +223,7 @@ export const guideCreateur = {
 };
 
 export const guideConfidentialite = {
-  slug: 'guides/confidentialite',
+  slug: 'guides/confidentialite/',
   title: 'Régler sa confidentialité',
   category: 'Guides',
   updated: '9 octobre 2026',
@@ -321,7 +321,7 @@ export const guideConfidentialite = {
 };
 
 export const guideData = {
-  slug: 'guides/donnees-mobiles',
+  slug: 'guides/donnees-mobiles/',
   title: 'Maîtriser sa consommation de données',
   category: 'Guides',
   updated: '9 octobre 2026',
@@ -384,7 +384,7 @@ export const guideData = {
 };
 
 export const guideSignaler = {
-  slug: 'guides/signaler',
+  slug: 'guides/signaler/',
   title: 'Signaler un problème',
   category: 'Guides',
   updated: '9 octobre 2026',
