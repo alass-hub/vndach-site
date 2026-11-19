@@ -1,48 +1,28 @@
 /**
- * prerender.mjs — remplace l'ancien script de génération des pages.
+ * scripts/prerender-ssg.mjs — prérendu sans navigateur.
  *
- *     npm run build && node prerender.mjs
+ *     npm run build          →  dist/          (le site pour le visiteur)
+ *     npm run build:ssr      →  .ssr/          (la fonction render(), pour Node)
+ *     node scripts/prerender-ssg.mjs
  *
- * ──────────────────────────────────────────────────────────────────
- *  LE PROBLÈME QU'IL CORRIGE
- * ──────────────────────────────────────────────────────────────────
+ * Remplace la version Playwright. Rien à télécharger, aucune bibliothèque
+ * système : c'est du React rendu par Node, exactement comme le fait Next.js.
  *
- *  L'ancien script écrivait 17 fichiers qui ne différaient QUE par leur
- *  <head>. Le <body> de chacun était :
- *
- *      <body><div id="root"></div><script …></script></body>
- *
- *  Donc 17 URL servant exactement le même contenu. Google déduplique sur le
- *  CONTENU, et une balise canonique n'est qu'une indication : quand 17 pages
- *  sont identiques, Google les regroupe et choisit lui-même un représentant.
- *  D'où « Google n'a pas choisi la même URL canonique que l'utilisateur ».
- *
- *  Ce script charge chaque route dans un vrai Chromium, attend que React ait
- *  rendu, et écrit le HTML RENDU. Chaque fichier contient alors son propre
- *  texte. Les balises <script> sont conservées : React reprend la main au
- *  chargement, côté visiteur rien ne change.
- *
- *  Pourquoi Chromium plutôt que react-dom/server : aucune modification de
- *  l'application. Pas de routeur statique à câbler, pas de `window` à
- *  protéger, pas de refonte. Pour 17 pages d'information, c'est le bon
- *  compromis.
- *
- *  Prérequis :  npm i -D playwright  puis  npx playwright install chromium
+ * Sur Cloudflare Pages, Playwright téléchargeait bien Chromium mais ne pouvait
+ * pas le lancer — `libatk-1.0.so.0: cannot open shared object file`. Sans accès
+ * root, pas d'apt-get, donc pas de solution. Ici le problème ne se pose plus.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
-import http from 'node:http';
-import { chromium } from 'playwright';
+import { pathToFileURL } from 'node:url';
 
 const SITE = 'https://vndach.com';
 const DIST = path.resolve('dist');
-const PORT = 4178;
+const SSR = path.resolve('.ssr');
 
-/* ⚠ Ces chemins doivent correspondre EXACTEMENT à la forme canonique, barre
-   oblique finale comprise, ET aux liens internes de l'application. Voir la
-   section « liens internes » du patch : c'est ce décalage qui fait découvrir
-   à Google des URL sans barre finale. */
+/* ⚠ Ces chemins doivent correspondre EXACTEMENT à vos <Route path>, à la forme
+   canonique du sitemap, et à vos liens internes. */
 const PAGES = [
   { path: '/', title: 'Vndach — Informations officielles', description: "Site d'information officiel de Vndach : conditions, confidentialité, règles de la communauté et guides." },
   { path: '/cgu', title: "Conditions générales d'utilisation — Vndach", description: "Les conditions générales d'utilisation de Vndach : droits et obligations des utilisateurs, achats, ventes et paiements." },
@@ -63,223 +43,193 @@ const PAGES = [
   { path: '/contact', title: 'Contact — Vndach', description: "Contactez l'équipe Vndach : support, questions et demandes." },
 ];
 
-/** Texte minimum attendu dans #root pour considérer la page rendue. */
-const MIN_TEXT = 200;
+/* Seuil volontairement bas : il n'attrape que le rendu réellement vide.
+   Le vrai garde-fou est la détection de doublons plus bas — si une route n'est
+   pas reconnue, toutes les pages rendent le même élément « 404 », et c'est le
+   doublon qui le révèle, pas la longueur. */
+const MIN_TEXT = 60;
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
 /* ------------------------------------------------------------------ */
-/* Serveur statique local, avec repli SPA                              */
-/* ------------------------------------------------------------------ */
-
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.ico': 'image/x-icon',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.txt': 'text/plain; charset=utf-8',
-  '.xml': 'application/xml; charset=utf-8',
-};
-
-function startServer(root, port) {
-  const server = http.createServer((req, res) => {
-    const urlPath = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-
-    // Jamais au-dessus de la racine, même si la requête contient ../
-    const candidate = path.normalize(path.join(root, urlPath));
-    if (!candidate.startsWith(root)) {
-      res.writeHead(403).end();
-      return;
-    }
-
-    let file = candidate;
-    if (fs.existsSync(file) && fs.statSync(file).isDirectory()) {
-      file = path.join(file, 'index.html');
-    }
-
-    // Repli SPA : toute route inconnue sert la coquille, comme en production.
-    if (!fs.existsSync(file)) {
-      file = path.join(root, 'index.html');
-    }
-
-    const body = fs.readFileSync(file);
-    res.writeHead(200, {
-      'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-      'Content-Length': body.length,
-    });
-    res.end(body);
-  });
-
-  return new Promise((resolve, reject) => {
-    server.on('error', reject);
-    server.listen(port, '127.0.0.1', () => resolve(server));
-  });
-}
-
-/* ------------------------------------------------------------------ */
-/* Balises de tête — posées par le DOM, pas par expression régulière   */
+/* <head>                                                              */
 /* ------------------------------------------------------------------ */
 
 /**
- * L'ancien script faisait .replace() sur des balises og:title et
- * og:description QUI N'EXISTENT PAS dans index.html. Un .replace() sans
- * correspondance renvoie la chaîne inchangée, sans erreur : aucune page n'avait
- * donc d'og:title ni d'og:description, et un partage sur WhatsApp ou Facebook
- * n'affichait que le nom du site.
+ * On SUPPRIME puis on RÉÉCRIT, au lieu de remplacer.
  *
- * Ici on crée la balise si elle manque, on la met à jour sinon.
+ * L'ancien script faisait .replace() sur des balises og:title et
+ * og:description absentes d'index.html. Un .replace() sans correspondance
+ * renvoie la chaîne inchangée, sans erreur : aucune page n'a jamais eu
+ * d'og:title, et un partage WhatsApp n'affichait que « Vndach ».
  */
-function applyHead({ title, description, canonical }) {
-  document.title = title;
+function applyHead(html, { title, description, canonical }) {
+  let out = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${esc(title)}</title>`);
 
-  const setMeta = (attr, name, content) => {
-    let el = document.head.querySelector(`meta[${attr}="${name}"]`);
-    if (!el) {
-      el = document.createElement('meta');
-      el.setAttribute(attr, name);
-      document.head.appendChild(el);
-    }
-    el.setAttribute('content', content);
-  };
+  const drop = [
+    /<meta\s+name="description"[^>]*>\s*/gi,
+    /<meta\s+property="og:title"[^>]*>\s*/gi,
+    /<meta\s+property="og:description"[^>]*>\s*/gi,
+    /<meta\s+property="og:url"[^>]*>\s*/gi,
+    /<meta\s+name="twitter:[^"]*"[^>]*>\s*/gi,
+    /<link\s+rel="canonical"[^>]*>\s*/gi,
+  ];
+  for (const re of drop) out = out.replace(re, '');
 
-  setMeta('name', 'description', description);
-  setMeta('property', 'og:title', title);
-  setMeta('property', 'og:description', description);
-  setMeta('property', 'og:url', canonical);
+  const tags = [
+    `<meta name="description" content="${esc(description)}" />`,
+    `<meta property="og:title" content="${esc(title)}" />`,
+    `<meta property="og:description" content="${esc(description)}" />`,
+    `<meta property="og:url" content="${canonical}" />`,
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:title" content="${esc(title)}" />`,
+    `<meta name="twitter:description" content="${esc(description)}" />`,
+    `<link rel="canonical" href="${canonical}" />`,
+  ].map((t) => '    ' + t).join('\n');
 
-  // Twitter lit og:* en repli, mais une grande carte se demande explicitement.
-  setMeta('name', 'twitter:card', 'summary_large_image');
-  setMeta('name', 'twitter:title', title);
-  setMeta('name', 'twitter:description', description);
-
-  let link = document.head.querySelector('link[rel="canonical"]');
-  if (!link) {
-    link = document.createElement('link');
-    link.setAttribute('rel', 'canonical');
-    document.head.appendChild(link);
-  }
-  link.setAttribute('href', canonical);
+  return out.replace(/<\/head>/i, `${tags}\n  </head>`);
 }
 
 /* ------------------------------------------------------------------ */
 
 const canonicalFor = (p) => (p === '/' ? `${SITE}/` : `${SITE}${p}/`);
-
 const outputFor = (p) =>
   p === '/' ? path.join(DIST, 'index.html') : path.join(DIST, p, 'index.html');
 
-/** Le texte visible d'un fichier rendu, pour la détection de doublons. */
-function visibleText(file) {
-  const html = fs.readFileSync(file, 'utf8');
+function visibleText(html) {
   return html
-    .replace(/^[\s\S]*?<body[^>]*>/, '')
-    .replace(/<\/body>[\s\S]*$/, '')
-    .replace(/<script[\s\S]*?<\/script>/g, '')
-    .replace(/<style[\s\S]*?<\/style>/g, '')
+    .replace(/^[\s\S]*?<body[^>]*>/i, '')
+    .replace(/<\/body>[\s\S]*$/i, '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 async function main() {
-  if (!fs.existsSync(path.join(DIST, 'index.html'))) {
-    console.error(`✖ ${path.join(DIST, 'index.html')} introuvable. Lancez « npm run build » d'abord.`);
+  const templatePath = path.join(DIST, 'index.html');
+
+  if (!fs.existsSync(templatePath)) {
+    console.error(`✖ ${templatePath} introuvable. Lancez « npm run build » d'abord.`);
     process.exit(1);
   }
 
-  /* Garde-fou : si index.html référence encore /src/main.jsx, c'est le modèle
-     source et non le résultat du build. Prérendre là-dessus produirait 17
-     pages vides — exactement le problème qu'on corrige. */
-  const template = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
+  const template = fs.readFileSync(templatePath, 'utf8');
+
   if (template.includes('/src/main.jsx')) {
     console.error("✖ dist/index.html référence /src/main.jsx : ce n'est pas un build de production.");
-    console.error('  Vite réécrit cette balise vers /assets/index-[hash].js. Relancez « npm run build ».');
     process.exit(1);
   }
 
-  const server = await startServer(DIST, PORT);
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
+  /* dist/index.html sert de modèle ET reçoit la page d'accueil : après un
+     premier passage, son #root n'est plus vide. Relancer le script sans
+     refaire « npm run build » injecterait alors l'accueil dans les 17 pages.
+     On refuse de partir dans ce cas plutôt que de produire un dist corrompu. */
+  if (!/<div id="root">\s*<\/div>/.test(template)) {
+    console.error('✖ dist/index.html ne contient pas un <div id="root"></div> vide.');
+    console.error('  Soit le prérendu a déjà tourné dessus, soit votre index.html a changé.');
+    console.error('  Relancez « npm run build » avant ce script — toujours dans cet ordre.');
+    process.exit(1);
+  }
 
-  const jsErrors = [];
-  page.on('pageerror', (e) => jsErrors.push(String(e.message || e)));
+  /* Vite nomme la sortie SSR d'après le fichier d'entrée. On cherche plutôt
+     que de supposer : le nom change si vous renommez entry-server.jsx. */
+  const entry = fs.existsSync(SSR)
+    ? fs.readdirSync(SSR).find((f) => f.endsWith('.js') || f.endsWith('.mjs'))
+    : null;
+
+  if (!entry) {
+    console.error(`✖ Aucun module trouvé dans ${SSR}/`);
+    console.error('  Lancez « npm run build:ssr » avant ce script.');
+    process.exit(1);
+  }
+
+  let render;
+  try {
+    ({ render } = await import(pathToFileURL(path.join(SSR, entry)).href));
+  } catch (e) {
+    console.error('✖ Impossible de charger', path.join(SSR, entry));
+    console.error(' ', e.message);
+    process.exit(1);
+  }
+
+  if (typeof render !== 'function') {
+    console.error('✖ entry-server.jsx doit exporter une fonction nommée « render ».');
+    process.exit(1);
+  }
 
   const results = [];
+  let failed = false;
 
   for (const def of PAGES) {
     const canonical = canonicalFor(def.path);
-    const localUrl = `http://127.0.0.1:${PORT}${def.path === '/' ? '/' : def.path + '/'}`;
 
-    jsErrors.length = 0;
-    await page.goto(localUrl, { waitUntil: 'networkidle', timeout: 30000 });
-
-    /* On attend du vrai TEXTE, pas seulement la présence de #root. Un <div>
-       vide passerait un waitForSelector et on réécrirait une page vide. */
+    let body;
     try {
-      await page.waitForFunction(
-        (min) => {
-          const root = document.getElementById('root');
-          return root && (root.innerText || '').trim().length >= min;
-        },
-        MIN_TEXT,
-        { timeout: 15000 }
-      );
-    } catch {
-      /* On continue : le compte de caractères ci-dessous servira au verdict. */
+      body = render(def.path);
+    } catch (e) {
+      console.error(`✖ ${def.path}`);
+      console.error(`    ${e.message}`);
+
+      /* Les deux erreurs qu'on rencontre vraiment, avec leur correctif, pour
+         éviter d'aller chercher dans une trace de pile React. */
+      if (/window is not defined|document is not defined|localStorage/.test(e.message)) {
+        console.error('    → un composant lit window/document PENDANT le rendu.');
+        console.error('      Déplacez cette lecture dans un useEffect.');
+      }
+      if (/Router.*inside another.*Router/i.test(e.message)) {
+        console.error('    → votre App.jsx contient son propre <BrowserRouter>.');
+        console.error('      Déplacez-le dans main.jsx, autour de <App />.');
+      }
+      failed = true;
+      continue;
     }
 
-    const chars = await page.evaluate(
-      () => (document.getElementById('root')?.innerText || '').trim().length
+    let html = template.replace(
+      /<div id="root">\s*<\/div>/,
+      `<div id="root">${body}</div>`
     );
 
-    await page.evaluate(applyHead, { ...def, canonical });
+    if (!html.includes(body.slice(0, 40))) {
+      console.error(`✖ ${def.path} : <div id="root"></div> introuvable dans dist/index.html.`);
+      console.error('  Le contenu n\'a pas pu être injecté. Vérifiez votre index.html.');
+      failed = true;
+      continue;
+    }
 
-    const html = '<!doctype html>\n' + (await page.evaluate(() => document.documentElement.outerHTML));
+    html = applyHead(html, { ...def, canonical });
 
     const out = outputFor(def.path);
     fs.mkdirSync(path.dirname(out), { recursive: true });
     fs.writeFileSync(out, html);
 
-    results.push({ path: def.path, chars, errors: [...jsErrors] });
-
+    const chars = visibleText(html).length;
+    results.push({ path: def.path, chars });
     console.log(`${chars >= MIN_TEXT ? '✔' : '✖'} ${canonical.padEnd(44)} ${String(chars).padStart(6)} caractères`);
-    if (jsErrors.length) {
-      console.log(`    erreur JS : ${jsErrors[0].slice(0, 120)}`);
-    }
   }
 
-  await browser.close();
-  server.close();
-
-  /* ---------------------------------------------------------------- */
-  /* Vérifications : le bug ne doit pas pouvoir revenir en silence     */
-  /* ---------------------------------------------------------------- */
-
   console.log('\n' + '─'.repeat(70));
-  let failed = false;
+
+  if (failed) {
+    console.error('✖ Certaines routes n\'ont pas pu être rendues.');
+    process.exit(1);
+  }
 
   const empty = results.filter((r) => r.chars < MIN_TEXT);
   if (empty.length) {
     console.error(`✖ ${empty.length} page(s) rendue(s) quasi vide(s) :`);
     for (const r of empty) console.error(`    ${r.path} — ${r.chars} caractères`);
-    console.error("\n  Prérendre une page vide ne corrige rien. Vérifiez que la route existe");
-    console.error("  dans le routeur et que le rendu ne dépend pas d'un appel réseau.");
-    failed = true;
+    console.error("\n  Vérifiez que ces chemins existent dans vos <Route path>.");
+    console.error('  Une route non reconnue rend la page 404, donc presque rien.');
+    process.exit(1);
   }
 
-  /* Deux pages au texte identique, et Google les regroupera de nouveau, avec
-     la même conséquence qu'aujourd'hui. Autant l'apprendre ici. */
+  /* Deux pages identiques, et Google les regroupera de nouveau — avec la même
+     conséquence qu'aujourd'hui. Autant l'apprendre au build. */
   const seen = new Map();
   let dupes = 0;
   for (const def of PAGES) {
-    const key = visibleText(outputFor(def.path)).slice(0, 4000);
+    const key = visibleText(fs.readFileSync(outputFor(def.path), 'utf8')).slice(0, 4000);
     if (seen.has(key)) {
       console.error(`✖ ${def.path} a le même contenu visible que ${seen.get(key)}`);
       dupes++;
@@ -289,16 +239,12 @@ async function main() {
   }
 
   if (dupes) {
-    console.error(`\n✖ ${dupes} doublon(s) de contenu. Google refera exactement ce qu'il fait`);
-    console.error("  aujourd'hui : il choisira une seule URL pour tout le groupe.");
-    failed = true;
+    console.error(`\n✖ ${dupes} doublon(s). Google refera ce qu'il fait aujourd'hui :`);
+    console.error("  il choisira une seule URL pour tout le groupe.");
+    process.exit(1);
   }
 
-  if (failed) process.exit(1);
-
   console.log(`✔ ${PAGES.length} pages écrites, toutes avec un contenu distinct.`);
-  console.log('\n  À vérifier après déploiement, sans JavaScript :');
-  console.log("      curl -s https://vndach.com/bons-achat/ | grep -o \"bon d'achat\" | head -1");
 }
 
 main().catch((e) => {
