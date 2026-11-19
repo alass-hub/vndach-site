@@ -2,26 +2,26 @@ import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import heroImage from '../images/hero.webp';
 const REFERENCE = [
-  { to: '/cgu', title: "Conditions générales d'utilisation", desc: "Le contrat qui lie chaque utilisateur à la plateforme : inscription, vente, achat, paiement séquestré, contenus, modération." },
-  { to: '/confidentialite', title: 'Politique de confidentialité', desc: "Quelles données sont collectées, pourquoi, combien de temps elles sont conservées et comment exercer vos droits." },
-  { to: '/bons-achat', title: "Règlement des bons d'achat", desc: "Nature juridique des bons, conditions d'obtention, durée de validité de 90 jours et cas d'annulation." },
-  { to: '/regles-communaute', title: 'Règles de la communauté', desc: "Ce qui est permis et ce qui ne l'est pas, les sanctions applicables et la procédure de signalement." },
+  { to: '/cgu/', title: "Conditions générales d'utilisation", desc: "Le contrat qui lie chaque utilisateur à la plateforme : inscription, vente, achat, paiement séquestré, contenus, modération." },
+  { to: '/confidentialite/', title: 'Politique de confidentialité', desc: "Quelles données sont collectées, pourquoi, combien de temps elles sont conservées et comment exercer vos droits." },
+  { to: '/bons-achat/', title: "Règlement des bons d'achat", desc: "Nature juridique des bons, conditions d'obtention, durée de validité de 90 jours et cas d'annulation." },
+  { to: '/regles-communaute/', title: 'Règles de la communauté', desc: "Ce qui est permis et ce qui ne l'est pas, les sanctions applicables et la procédure de signalement." },
 ];
 
 const GUIDES = [
-  { to: '/guides/acheter', title: 'Acheter en sécurité', desc: "Le paiement séquestré, le code de validation, et les trois erreurs qui vous feraient perdre toute protection." },
-  { to: '/guides/vendre', title: 'Vendre sur la MarketPlace', desc: "Publier une annonce, fixer ses frais de livraison, être payé, et ce qui entraîne un bannissement." },
-  { to: '/guides/creer', title: 'Publier et être récompensé', desc: "Comment fonctionnent les bons d'achat et comment ne pas les perdre." },
-  { to: '/guides/confidentialite', title: 'Régler sa confidentialité', desc: "Qui voit votre profil, qui peut vous écrire, qui peut commenter : le chemin exact de chaque réglage." },
-  { to: '/guides/donnees-mobiles', title: 'Économiser ses données', desc: "Les quatre réglages qui déterminent ce que l'application télécharge sur votre forfait." },
-  { to: '/guides/signaler', title: 'Signaler un problème', desc: "Contenu choquant, arnaque, litige, compte piraté : à qui s'adresser et ce qui se passe ensuite." },
+  { to: '/guides/acheter/', title: 'Acheter en sécurité', desc: "Le paiement séquestré, le code de validation, et les trois erreurs qui vous feraient perdre toute protection." },
+  { to: '/guides/vendre/', title: 'Vendre sur la MarketPlace', desc: "Publier une annonce, fixer ses frais de livraison, être payé, et ce qui entraîne un bannissement." },
+  { to: '/guides/creer/', title: 'Publier et être récompensé', desc: "Comment fonctionnent les bons d'achat et comment ne pas les perdre." },
+  { to: '/guides/confidentialite/', title: 'Régler sa confidentialité', desc: "Qui voit votre profil, qui peut vous écrire, qui peut commenter : le chemin exact de chaque réglage." },
+  { to: '/guides/donnees-mobiles/', title: 'Économiser ses données', desc: "Les quatre réglages qui déterminent ce que l'application télécharge sur votre forfait." },
+  { to: '/guides/signaler/', title: 'Signaler un problème', desc: "Contenu choquant, arnaque, litige, compte piraté : à qui s'adresser et ce qui se passe ensuite." },
 ];
 
 const AUDIENCES = [
-  { to: '/a-propos', title: 'Vous découvrez Vndach', desc: "Ce que fait l'application, pour qui, et selon quels principes." },
-  { to: '/autorites', title: 'Vous êtes une autorité', desc: "Procédure applicable aux réquisitions, demandes de conservation et urgences vitales." },
-  { to: '/partenaires', title: 'Vous êtes partenaire ou investisseur', desc: "Modèle de fonctionnement, conformité réglementaire et types de partenariats recherchés." },
-  { to: '/mentions-legales', title: 'Vous cherchez les mentions légales', desc: "Éditeur, hébergeur, propriété intellectuelle et accessibilité." },
+  { to: '/a-propos/', title: 'Vous découvrez Vndach', desc: "Ce que fait l'application, pour qui, et selon quels principes." },
+  { to: '/autorites/', title: 'Vous êtes une autorité', desc: "Procédure applicable aux réquisitions, demandes de conservation et urgences vitales." },
+  { to: '/partenaires/', title: 'Vous êtes partenaire ou investisseur', desc: "Modèle de fonctionnement, conformité réglementaire et types de partenariats recherchés." },
+  { to: '/mentions-legales/', title: 'Vous cherchez les mentions légales', desc: "Éditeur, hébergeur, propriété intellectuelle et accessibilité." },
 ];
 
 export default function Home() {
@@ -45,8 +45,8 @@ export default function Home() {
             Les actions concernant un compte se font dans l'application.
           </p>
           <div className="hero-actions">
-            <Link className="btn btn-primary" to="/cgu">Lire les conditions générales</Link>
-            <Link className="btn btn-ghost" to="/guides">Consulter les guides</Link>
+            <Link className="btn btn-primary" to="/cgu/">Lire les conditions générales</Link>
+            <Link className="btn btn-ghost" to="/guides/">Consulter les guides</Link>
           </div>
         </div>
       </section>
